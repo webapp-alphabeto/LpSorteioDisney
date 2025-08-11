@@ -13,7 +13,7 @@ exports.handler = async (event) => {
 
   try {
     const formData = await parseMultipartForm(event);
-    const required = ['nome','cpf','dataNascimento','endereco','email','celular','numeroNota','valorCompra'];
+    const requiredFields = ['nome','cpf','dataNascimento','endereco','email','celular','numeroNota','valorCompra','respostaPergunta'];
     for (const f of required) {
       if (!formData.fields[f]) {
         return { statusCode: 400, body: JSON.stringify({ error: `Campo ${f} é obrigatório` }) };
@@ -54,10 +54,10 @@ exports.handler = async (event) => {
 
     // 4) Criar participação
     const part = await query(`
-      INSERT INTO participacoes (usuario_id, numero_nota, valor_compra, arquivo_nota)
+      INSERT INTO participacoes (usuario_id, numero_nota, valor_compra, arquivo_nota, resposta_pergunta)
       OUTPUT INSERTED.*
-      VALUES ($1,$2,$3,$4)
-    `, [usuario_id, dados.numeroNota, Number(dados.valorCompra), urlArquivo]);
+      VALUES ($1,$2,$3,$4,$5)
+    `, [usuario_id, dados.numeroNota, Number(dados.valorCompra), urlArquivo, dados.respostaPergunta]);
     const participacao_id = part[0].id;
 
     // 5) Gerar códigos

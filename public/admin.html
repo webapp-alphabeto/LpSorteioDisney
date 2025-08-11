@@ -253,6 +253,7 @@
             <input type="text" id="searchNome" placeholder="Buscar por nome">
             <input type="text" id="searchEmail" placeholder="Buscar por email">
             <input type="text" id="searchNota" placeholder="Buscar por nº nota">
+            <input type="text" id="searchResposta" placeholder="Buscar por resposta">
             <select id="filterStatus">
                 <option value="">Todos os status</option>
                 <option value="pendente">Pendente</option>
@@ -277,6 +278,7 @@
                     <th>Nº Nota</th>
                     <th>Valor</th>
                     <th>Códigos</th>
+                    <th>Resposta</th>
                     <th>Status</th>
                     <th>Nota Fiscal</th>
                 </tr>
@@ -295,210 +297,190 @@
         </div>
     </div>
 
-    <script>
-        // Configuração do Supabase - usando as variáveis corretas
-        const SUPABASE_URL = 'https://vvrbumbpqvxhzeoozabk.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2cmJ1bWJwcXZ4aHplb296YWJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyMDE1MDAsImV4cCI6MjA2ODc3NzUwMH0.jIPxOwEtdjrgHwZ6z1qG8svewEC49ESahdcpfV8W3HA';
+<script>
+  // Agora o painel chama a Netlify Function que lê no SQL Server
+  let participacoes = [];
 
-        let participacoes = [];
-        let codigos = [];
+  // Inicializa ao carregar
+  window.onload = async () => {
+    await carregarDados();
+  };
 
-        // Inicializar ao carregar a página
-        window.onload = async () => {
-            await carregarDados();
-        };
+  async function carregarDados() {
+    try {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('error').style.display = 'none';
 
-        async function carregarDados() {
-            try {
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('error').style.display = 'none';
+      // Busca via function (backend já adaptado)
+      const resp = await fetch('/.netlify/functions/admin-participacoes', {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!resp.ok) throw new Error('Erro ao buscar dados');
 
-                // Buscar participações com joins
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/participacoes?select=*,usuarios(*),codigos_sorteio(*)`, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
+      const json = await resp.json();
+      participacoes = json.participacoes || [];
 
-                if (!response.ok) throw new Error('Erro ao buscar dados');
+      calcularEstatisticas();
+      exibirParticipacoes(participacoes);
+    } catch (err) {
+      console.error(err);
+      document.getElementById('error').textContent = 'Erro ao carregar dados: ' + err.message;
+      document.getElementById('error').style.display = 'block';
+    } finally {
+      document.getElementById('loading').style.display = 'none';
+    }
+  }
 
-                participacoes = await response.json();
-                
-                // Calcular estatísticas
-                calcularEstatisticas();
-                
-                // Exibir dados na tabela
-                exibirParticipacoes(participacoes);
+  function calcularEstatisticas() {
+    const totalParticipantes = new Set(participacoes.map(p => p.usuario_id)).size;
+    const totalCodigos = participacoes.reduce((sum, p) => sum + (p.codigos?.length || 0), 0);
+    const totalValor = participacoes.reduce((sum, p) => sum + Number(p.valor_compra || 0), 0);
+    const mediaTicket = totalParticipantes > 0 ? totalValor / totalParticipantes : 0;
 
-            } catch (error) {
-                console.error('Erro:', error);
-                document.getElementById('error').textContent = 'Erro ao carregar dados: ' + error.message;
-                document.getElementById('error').style.display = 'block';
-            } finally {
-                document.getElementById('loading').style.display = 'none';
-            }
-        }
+    document.getElementById('totalParticipantes').textContent = totalParticipantes;
+    document.getElementById('totalCodigos').textContent = totalCodigos;
+    document.getElementById('totalValor').textContent = `R$ ${totalValor.toFixed(2)}`;
+    document.getElementById('mediaTicket').textContent = `R$ ${mediaTicket.toFixed(2)}`;
+  }
 
-        function calcularEstatisticas() {
-            const totalParticipantes = new Set(participacoes.map(p => p.usuario_id)).size;
-            const totalCodigos = participacoes.reduce((sum, p) => sum + (p.codigos_sorteio?.length || 0), 0);
-            const totalValor = participacoes.reduce((sum, p) => sum + parseFloat(p.valor_compra || 0), 0);
-            const mediaTicket = totalParticipantes > 0 ? totalValor / totalParticipantes : 0;
+  function exibirParticipacoes(dados) {
+    const tbody = document.getElementById('participacoesBody');
+    tbody.innerHTML = '';
 
-            document.getElementById('totalParticipantes').textContent = totalParticipantes;
-            document.getElementById('totalCodigos').textContent = totalCodigos;
-            document.getElementById('totalValor').textContent = `R$ ${totalValor.toFixed(2)}`;
-            document.getElementById('mediaTicket').textContent = `R$ ${mediaTicket.toFixed(2)}`;
-        }
+    dados.forEach(p => {
+      const tr = document.createElement('tr');
+      const dataFormatada = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
+      const u = p.usuario || {};
 
-        function exibirParticipacoes(dados) {
-            const tbody = document.getElementById('participacoesBody');
-            tbody.innerHTML = '';
+      tr.innerHTML = `
+        <td>${dataFormatada}</td>
+        <td>${u.nome || '-'}</td>
+        <td>${u.cpf || '-'}</td>
+        <td>${u.email || '-'}</td>
+        <td>${u.celular || '-'}</td>
+        <td>${p.numero_nota || '-'}</td>
+        <td>R$ ${Number(p.valor_compra || 0).toFixed(2)}</td>
+        <td>
+          ${(p.codigos || []).map(c => `<span class="codigo-badge">${c}</span>`).join('') || '-'}
+        </td>
+        <td>${(p.resposta_pergunta || '').toString()}</td>
+        <td>
+          <span style="color: ${
+            (p.status || 'pendente') === 'aprovado' ? 'green' :
+            (p.status || 'pendente') === 'rejeitado' ? 'red' : 'orange'
+          }">
+            ${p.status || 'pendente'}
+          </span>
+        </td>
+        <td>
+          <button class="btn-ver-nota" onclick="verNotaFiscal('${(p.arquivo_nota || '').replace(/'/g, '&#39;')}', '${(p.numero_nota || '').replace(/'/g, '&#39;')}')">
+            👁️ Ver Nota
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
 
-            dados.forEach(p => {
-                const tr = document.createElement('tr');
-                const dataFormatada = new Date(p.created_at).toLocaleDateString('pt-BR');
-                
-                tr.innerHTML = `
-                    <td>${dataFormatada}</td>
-                    <td>${p.usuarios?.nome || '-'}</td>
-                    <td>${p.usuarios?.cpf || '-'}</td>
-                    <td>${p.usuarios?.email || '-'}</td>
-                    <td>${p.usuarios?.celular || '-'}</td>
-                    <td>${p.numero_nota}</td>
-                    <td>R$ ${parseFloat(p.valor_compra).toFixed(2)}</td>
-                    <td>
-                        ${p.codigos_sorteio?.map(c => 
-                            `<span class="codigo-badge">${c.codigo}</span>`
-                        ).join('') || '-'}
-                    </td>
-                    <td>
-                        <span style="color: ${
-                            p.status === 'aprovado' ? 'green' : 
-                            p.status === 'rejeitado' ? 'red' : 'orange'
-                        }">
-                            ${p.status}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn-ver-nota" onclick="verNotaFiscal('${p.arquivo_nota}', '${p.numero_nota}')">
-                            👁️ Ver Nota
-                        </button>
-                    </td>
-                `;
-                
-                tbody.appendChild(tr);
-            });
+    document.getElementById('participacoesTable').style.display = 'table';
+  }
 
-            document.getElementById('participacoesTable').style.display = 'table';
-        }
+  function verNotaFiscal(url, numeroNota) {
+    const modal = document.getElementById('imageModal');
+    const modalBody = document.getElementById('modalBody');
+    const modalTitle = document.getElementById('modalTitle');
 
-        function verNotaFiscal(url, numeroNota) {
-            const modal = document.getElementById('imageModal');
-            const modalBody = document.getElementById('modalBody');
-            const modalTitle = document.getElementById('modalTitle');
-            
-            modalTitle.textContent = `Nota Fiscal - ${numeroNota}`;
-            
-            // Verificar se é PDF ou imagem
-            if (url.toLowerCase().endsWith('.pdf')) {
-                modalBody.innerHTML = `
-                    <iframe src="${url}" width="100%" height="600px"></iframe>
-                    <p style="margin-top: 10px;">
-                        <a href="${url}" target="_blank" style="color: #667eea;">
-                            🔗 Abrir em nova aba
-                        </a>
-                    </p>
-                `;
-            } else {
-                modalBody.innerHTML = `
-                    <img src="${url}" alt="Nota Fiscal">
-                    <p style="margin-top: 10px;">
-                        <a href="${url}" download target="_blank" style="color: #667eea;">
-                            ⬇️ Baixar imagem
-                        </a>
-                    </p>
-                `;
-            }
-            
-            modal.style.display = 'flex';
-        }
+    modalTitle.textContent = `Nota Fiscal - ${numeroNota || ''}`;
 
-        function fecharModal() {
-            document.getElementById('imageModal').style.display = 'none';
-        }
+    if ((url || '').toLowerCase().endsWith('.pdf')) {
+      modalBody.innerHTML = `
+        <iframe src="${url}" width="100%" height="600px"></iframe>
+        <p style="margin-top: 10px;">
+          <a href="${url}" target="_blank" style="color: #667eea;">🔗 Abrir em nova aba</a>
+        </p>
+      `;
+    } else if (url) {
+      modalBody.innerHTML = `
+        <img src="${url}" alt="Nota Fiscal">
+        <p style="margin-top: 10px;">
+          <a href="${url}" download target="_blank" style="color: #667eea;">⬇️ Baixar imagem</a>
+        </p>
+      `;
+    } else {
+      modalBody.innerHTML = `<p>Sem arquivo de nota fiscal associado.</p>`;
+    }
 
-        // Fechar modal ao clicar fora
-        window.onclick = function(event) {
-            const modal = document.getElementById('imageModal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
+    modal.style.display = 'flex';
+  }
 
-        function buscarParticipacoes() {
-            const cpf = document.getElementById('searchCPF').value.toLowerCase();
-            const nome = document.getElementById('searchNome').value.toLowerCase();
-            const email = document.getElementById('searchEmail').value.toLowerCase();
-            const nota = document.getElementById('searchNota').value.toLowerCase();
-            const status = document.getElementById('filterStatus').value;
+  function fecharModal() {
+    document.getElementById('imageModal').style.display = 'none';
+  }
 
-            const filtradas = participacoes.filter(p => {
-                const matchCPF = !cpf || p.usuarios?.cpf?.toLowerCase().includes(cpf);
-                const matchNome = !nome || p.usuarios?.nome?.toLowerCase().includes(nome);
-                const matchEmail = !email || p.usuarios?.email?.toLowerCase().includes(email);
-                const matchNota = !nota || p.numero_nota?.toLowerCase().includes(nota);
-                const matchStatus = !status || p.status === status;
+  // Fechar modal ao clicar fora
+  window.onclick = function(event) {
+    const modal = document.getElementById('imageModal');
+    if (event.target === modal) modal.style.display = 'none';
+  };
 
-                return matchCPF && matchNome && matchEmail && matchNota && matchStatus;
-            });
+  function buscarParticipacoes() {
+    const cpf = document.getElementById('searchCPF').value.toLowerCase();
+    const nome = document.getElementById('searchNome').value.toLowerCase();
+    const email = document.getElementById('searchEmail').value.toLowerCase();
+    const nota = document.getElementById('searchNota').value.toLowerCase();
+    const resposta = document.getElementById('searchResposta').value.toLowerCase();
+    const status = document.getElementById('filterStatus').value;
 
-            exibirParticipacoes(filtradas);
-        }
+    const filtradas = participacoes.filter(p => {
+      const u = p.usuario || {};
+      const matchCPF = !cpf || (u.cpf || '').toLowerCase().includes(cpf);
+      const matchNome = !nome || (u.nome || '').toLowerCase().includes(nome);
+      const matchEmail = !email || (u.email || '').toLowerCase().includes(email);
+      const matchNota = !nota || (p.numero_nota || '').toLowerCase().includes(nota);
+      const matchStatus = !status || (p.status || 'pendente') === status;
+      const matchResposta = !resposta || (p.resposta_pergunta || '').toLowerCase().includes(resposta);
+      return matchCPF && matchNome && matchEmail && matchNota && matchStatus && matchResposta;
+    });
 
-        function limparFiltros() {
-            document.getElementById('searchCPF').value = '';
-            document.getElementById('searchNome').value = '';
-            document.getElementById('searchEmail').value = '';
-            document.getElementById('searchNota').value = '';
-            document.getElementById('filterStatus').value = '';
-            exibirParticipacoes(participacoes);
-        }
+    exibirParticipacoes(filtradas);
+  }
 
-        function exportarDados() {
-            // Criar CSV
-            let csv = 'Data,Nome,CPF,Email,Celular,Numero Nota,Valor,Codigos,Status\n';
-            
-            participacoes.forEach(p => {
-                const data = new Date(p.created_at).toLocaleDateString('pt-BR');
-                const codigos = p.codigos_sorteio?.map(c => c.codigo).join(';') || '';
-                
-                csv += `${data},"${p.usuarios?.nome || ''}","${p.usuarios?.cpf || ''}","${p.usuarios?.email || ''}","${p.usuarios?.celular || ''}","${p.numero_nota}",${p.valor_compra},"${codigos}","${p.status}"\n`;
-            });
+  function limparFiltros() {
+    document.getElementById('searchCPF').value = '';
+    document.getElementById('searchNome').value = '';
+    document.getElementById('searchEmail').value = '';
+    document.getElementById('searchNota').value = '';
+    document.getElementById('filterStatus').value = '';
+    exibirParticipacoes(participacoes);
+  }
 
-            // Download
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `participacoes_sorteio_${new Date().toISOString().split('T')[0]}.csv`;
-            link.click();
-        }
+  function exportarDados() {
+    let csv = 'Data,Nome,CPF,Email,Celular,Numero Nota,Valor,Codigos,Resposta,Status\n';
 
-        async function processarFilaAgora() {
-            if (!confirm('Processar a fila de emails agora?')) return;
-            
-            try {
-                const response = await fetch('/.netlify/functions/processar-fila-emails', {
-                    method: 'POST'
-                });
-                
-                const result = await response.json();
-                alert(`Processados: ${result.processados}\nEnviados: ${result.enviados}\nErros: ${result.erros}\n\nRestam ${result.fila_restante.pendentes} pendentes`);
-            } catch (error) {
-                alert('Erro ao processar fila: ' + error.message);
-            }
-        }
-    </script>
+    participacoes.forEach(p => {
+      const u = p.usuario || {};
+      const data = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '';
+      const codigos = (p.codigos || []).join(';');
+      csv += `${data},"${u.nome || ''}","${u.cpf || ''}","${u.email || ''}","${u.celular || ''}","${p.numero_nota || ''}",${Number(p.valor_compra || 0)},"${codigos}","${(p.resposta_pergunta || '').toString().replace(/"/g,'""')}","${p.status || 'pendente'}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `participacoes_sorteio_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  }
+
+  async function processarFilaAgora() {
+    if (!confirm('Processar a fila de emails agora?')) return;
+
+    try {
+      const response = await fetch('/.netlify/functions/processar-fila-emails', { method: 'POST' });
+      const result = await response.json();
+      alert(`Processados: ${result.processados}\nEnviados: ${result.enviados}\nErros: ${result.erros}\n\nRestam ${result.fila_restante.pendentes} pendentes`);
+    } catch (error) {
+      alert('Erro ao processar fila: ' + error.message);
+    }
+  }
+</script>
 </body>
 </html>
