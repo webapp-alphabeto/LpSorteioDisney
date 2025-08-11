@@ -13,13 +13,21 @@ exports.handler = async (event) => {
 
   try {
     const formData = await parseMultipartForm(event);
-    const requiredFields = ['nome','cpf','dataNascimento','endereco','email','celular','numeroNota','valorCompra','respostaPergunta'];
-    for (const f of required) {
-      if (!formData.fields[f]) {
+    const requiredFields = [
+      'nome','cpf','dataNascimento','endereco','email','celular',
+      'numeroNota','valorCompra','respostaPergunta'
+    ];
+    for (const f of requiredFields) {
+      const val = formData.fields[f];
+      if (typeof val === 'undefined' || String(val).trim() === '') {
         return { statusCode: 400, body: JSON.stringify({ error: `Campo ${f} é obrigatório` }) };
       }
     }
-    if (!formData.files.notaFiscal) {
+    // validação de valorCompra
+    if (Number.isNaN(Number(formData.fields.valorCompra)) || Number(formData.fields.valorCompra) <= 0) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Valor da compra inválido' }) };
+    }
+    if (!formData.files || !formData.files.notaFiscal) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Nota fiscal é obrigatória' }) };
     }
 
@@ -120,7 +128,11 @@ exports.handler = async (event) => {
 
 function parseMultipartForm(event) {
   return new Promise((resolve, reject) => {
-    const bb = busboy({ headers: event.headers });
+    const headers = {
+      ...event.headers,
+      'content-type': event.headers?.['content-type'] || event.headers?.['Content-Type'] || ''
+    };
+    const bb = busboy({ headers });
     const result = { fields: {}, files: {} };
 
     bb.on('file', (name, file, info) => {
