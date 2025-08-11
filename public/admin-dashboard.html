@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin – Painel do Sorteio</title>
+<style>
+  :root{--bg:#f5f5f7;--card:#fff;--ink:#1f2937;--muted:#6b7280;--brand:#6366f1;--ok:#16a34a;--warn:#f59e0b;--err:#dc2626;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1200px;margin:24px auto;padding:0 16px}
+  h1{margin:0 0 16px}
+  .grid{display:grid;gap:16px}
+  @media(min-width:900px){.grid-2{grid-template-columns:1fr 1fr}}
+  .card{background:var(--card);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .card .hd{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0}
+  .card .bd{padding:16px}
+  .btn{appearance:none;border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:700}
+  .btn.brand{background:var(--brand);color:#fff}
+  .btn.subtle{background:#eef2ff;color:#4338ca}
+  .btn.ok{background:var(--ok);color:#fff}
+  .btn.warn{background:var(--warn);color:#111}
+  .btn.err{background:var(--err);color:#fff}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .tbl{width:100%;border-collapse:collapse}
+  .tbl th,.tbl td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px}
+  .tbl th{background:#f8fafc;color:#334155}
+  .badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:12px}
+  .b-pendente{background:#fff7ed;color:#9a3412}
+  .b-enviando{background:#eff6ff;color:#1d4ed8}
+  .b-enviado{background:#ecfdf5;color:#047857}
+  .b-erro{background:#fef2f2;color:#b91c1c}
+  .muted{color:var(--muted)}
+  input,select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
+  .codes{display:flex;gap:6px;flex-wrap:wrap}
+  .code{background:#eef2ff;color:#3730a3;padding:2px 8px;border-radius:6px;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎫 Painel Administrativo do Sorteio</h1>
+
+  <div class="row" style="margin-bottom:16px">
+    <button class="btn brand" onclick="processarFila()">▶️ Processar fila de e-mails</button>
+    <button class="btn subtle" onclick="refreshAll()">🔄 Atualizar</button>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Participações -->
+    <div class="card">
+      <div class="hd">
+        <h3 style="margin:0">Participações</h3>
+        <div class="row">
+          <input id="fNome" placeholder="Nome" />
+          <input id="fCPF" placeholder="CPF" />
+          <input id="fNota" placeholder="Nº nota" />
+          <button class="btn subtle" onclick="filtrarParticipacoes()">Filtrar</button>
+          <button class="btn subtle" onclick="limparFiltrosParticipacoes()">Limpar</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div id="pStats" class="muted" style="margin-bottom:8px">—</div>
+        <div style="overflow:auto">
+          <table class="tbl" id="tblParticipacoes">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>Email</th>
+                <th>Celular</th>
+                <th>Nº Nota</th>
+                <th>Valor</th>
+                <th>Códigos</th>
+                <th>Resp. Pergunta</th>
+                <th>Status</th>
+                <th>Nota</th>
+              </tr>
+            </thead>
+            <tbody id="tbPart"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila de e-mails -->
+    <div class="card">
+      <div class="hd">
+        <h3 style="margin:0">Fila de e-mails</h3>
+        <div class="row">
+          <select id="fStatus">
+            <option value="">Todos</option>
+            <option>pendente</option>
+            <option>enviando</option>
+            <option>enviado</option>
+            <option>erro</option>
+          </select>
+          <button class="btn subtle" onclick="carregarFila()">Filtrar</button>
+        </div>
+      </div>
+      <div class="bd">
+        <div id="eStats" class="muted" style="margin-bottom:8px">—</div>
+        <div style="overflow:auto">
+          <table class="tbl" id="tblFila">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Criado</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Tentativas</th>
+                <th>Códigos</th>
+                <th>Erro</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbFila"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let participacoesAll = [];
+let participacoesFiltradas = [];
+
+async function refreshAll(){
+  await Promise.all([carregarParticipacoes(),carregarFila()]);
+}
+
+// PARTICIPAÇÕES
+async function carregarParticipacoes(){
+  const res = await fetch('/.netlify/functions/listar-participacoes');
+  if(!res.ok){ alert('Erro ao carregar participações'); return; }
+  const json = await res.json();
+  const dados = json.participacoes || json.data || [];
+  participacoesAll = dados;
+  participacoesFiltradas = dados;
+  renderParticipacoes();
+}
+
+function filtrarParticipacoes(){
+  const nome = (document.getElementById('fNome').value||'').toLowerCase();
+  const cpf  = (document.getElementById('fCPF').value||'').toLowerCase();
+  const nota = (document.getElementById('fNota').value||'').toLowerCase();
+  participacoesFiltradas = participacoesAll.filter(p=>{
+    const u = p.usuarios || p.usuario || {};
+    const okNome = !nome || (u.nome||'').toLowerCase().includes(nome);
+    const okCPF  = !cpf  || (u.cpf||'').toLowerCase().includes(cpf);
+    const okNota = !nota || (p.numero_nota||'').toLowerCase().includes(nota);
+    return okNome && okCPF && okNota;
+  });
+  renderParticipacoes();
+}
+
+function limparFiltrosParticipacoes(){
+  document.getElementById('fNome').value='';
+  document.getElementById('fCPF').value='';
+  document.getElementById('fNota').value='';
+  participacoesFiltradas = participacoesAll;
+  renderParticipacoes();
+}
+
+function renderParticipacoes(){
+  const tb = document.getElementById('tbPart');
+  tb.innerHTML='';
+  let total=0, cods=0;
+  participacoesFiltradas.forEach(p=>{
+    const u = p.usuarios || p.usuario || {};
+    const data = new Date(p.created_at || p.data_criacao || Date.now()).toLocaleString('pt-BR');
+    const valor = Number(p.valor_compra||0);
+    total += valor;
+    const lista = p.codigos_sorteio || p.codigos || [];
+    cods += lista.length;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${data}</td>
+      <td>${u.nome||'-'}</td>
+      <td>${u.cpf||'-'}</td>
+      <td>${u.email||'-'}</td>
+      <td>${u.celular||'-'}</td>
+      <td>${p.numero_nota||'-'}</td>
+      <td>R$ ${valor.toFixed(2)}</td>
+      <td>${lista.map(c=>`<span class="code">${c.codigo||c}</span>`).join(' ')||'-'}</td>
+      <td>${p.resposta_pergunta||'-'}</td>
+      <td>${p.status||'pendente'}</td>
+      <td>${p.arquivo_nota? `<a href="${p.arquivo_nota}" target="_blank" rel="noopener">Abrir</a>` : '-'}</td>
+    `;
+    tb.appendChild(tr);
+  });
+  document.getElementById('pStats').textContent =
+    `Registros: ${participacoesFiltradas.length} • Códigos: ${cods} • Valor total: R$ ${total.toFixed(2)}`;
+}
+
+// FILA
+async function carregarFila(){
+  const st = document.getElementById('fStatus').value;
+  const url = new URL('/.netlify/functions/listar-fila-emails', location.origin);
+  if(st) url.searchParams.set('status',st);
+  const res = await fetch(url, { headers: { 'Accept':'application/json' }});
+  if(!res.ok){ alert('Erro ao carregar fila'); return; }
+  const json = await res.json();
+  const itens = json.items || [];
+  renderFila(itens);
+}
+
+function renderFila(itens){
+  const tb = document.getElementById('tbFila');
+  tb.innerHTML='';
+  let pend=0, err=0, env=0, enviando=0;
+  itens.forEach(i=>{
+    if(i.status==='pendente') pend++;
+    else if(i.status==='erro') err++;
+    else if(i.status==='enviado') env++;
+    else if(i.status==='enviando') enviando++;
+
+    const created = new Date(i.created_at || i.agendado_para || Date.now()).toLocaleString('pt-BR');
+    const codes = safeParseJSON(i.codigos);
+    const badge = i.status==='pendente' ? 'b-pendente' :
+                  i.status==='erro' ? 'b-erro' :
+                  i.status==='enviando' ? 'b-enviando' : 'b-enviado';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${i.id}</td>
+      <td>${created}</td>
+      <td>${i.nome||'-'}</td>
+      <td>${i.email||'-'}</td>
+      <td><span class="badge ${badge}">${i.status}</span></td>
+      <td>${i.tentativas ?? 0}</td>
+      <td class="codes">${(codes||[]).map(c=>`<span class="code">${c}</span>`).join(' ')}</td>
+      <td class="muted" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${i.erro_mensagem||''}">${i.erro_mensagem||''}</td>
+      <td>
+        ${i.status!=='enviado'
+          ? `<button class="btn ok" onclick="reenviar(${i.id})">Reenviar</button>`
+          : `<button class="btn subtle" disabled>OK</button>`}
+      </td>
+    `;
+    tb.appendChild(tr);
+  });
+  document.getElementById('eStats').textContent =
+    `Pendentes: ${pend} • Enviando: ${enviando} • Enviados: ${env} • Erro: ${err} • Total: ${itens.length}`;
+}
+
+function safeParseJSON(x){ try{ return typeof x==='string' ? JSON.parse(x) : x }catch(e){ return [] } }
+
+async function processarFila(){
+  if(!confirm('Processar fila agora?')) return;
+  const res = await fetch('/.netlify/functions/processar-fila-emails',{method:'POST'});
+  const json = await res.json().catch(()=>({}));
+  alert(`Processados: ${json.processados||0}\nEnviados: ${json.enviados||0}\nErros: ${json.erros||0}`);
+  await carregarFila();
+}
+
+async function reenviar(id){
+  if(!confirm('Reenviar este e-mail agora?')) return;
+  const res = await fetch('/.netlify/functions/reenviar-email',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ id })
+  });
+  const json = await res.json().catch(()=>({}));
+  if(!res.ok || !json.success){
+    alert('Falha ao reenviar: '+(json.message||'Erro'));
+  }else{
+    alert('E-mail reenviado!');
+  }
+  await carregarFila();
+}
+
+refreshAll();
+</script>
+</body>
+</html>
