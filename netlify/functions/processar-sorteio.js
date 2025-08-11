@@ -51,12 +51,6 @@ exports.handler = async (event) => {
     }
     const usuario_id = usuario.id;
 
-    // 2) Nota fiscal única
-    const exists = await query('SELECT TOP(1) 1 FROM participacoes WHERE numero_nota=$1', [dados.numeroNota]);
-    if (exists.length) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'Esta nota fiscal já foi utilizada' }) };
-    }
-
     // 3) Upload nota na Azure
     const urlArquivo = await uploadNotaFiscalAzure(arquivo.data, arquivo.filename, dados.numeroNota, arquivo.type);
 
@@ -68,16 +62,33 @@ exports.handler = async (event) => {
     `, [usuario_id, dados.numeroNota, Number(dados.valorCompra), urlArquivo, dados.respostaPergunta]);
     const participacao_id = part[0].id;
 
-    // 5) Gerar códigos
+    // 5) Gerar códigos (à prova de corrida)
     const qtd = calcularQuantidadeCodigos(Number(dados.valorCompra));
     const codigos = [];
+
     for (let i = 0; i < qtd; i++) {
-      const codigo = await gerarCodigoUnico();
-      await query(`
-        INSERT INTO codigos_sorteio (codigo, participacao_id, usuario_id)
-        VALUES ($1,$2,$3)
-      `, [codigo, participacao_id, usuario_id]);
-      codigos.push(codigo);
+      let tentativas = 0;
+      while (true) {
+        tentativas++;
+        const codigo = await gerarCodigoUnico(); // continua fazendo o SELECT anti-colisão
+
+        try {
+          await query(`
+            INSERT INTO codigos_sorteio (codigo, participacao_id, usuario_id)
+            VALUES ($1,$2,$3)
+          `, [codigo, participacao_id, usuario_id]);
+
+          codigos.push(codigo);
+          break; // deu certo, vai pro próximo
+        } catch (e) {
+          // SQL Server: 2627 (PRIMARY KEY/UNIQUE violation) | 2601 (duplicate index)
+          if ((e.number === 2627 || e.number === 2601) && tentativas < 5) {
+            // colisão: tenta gerar outro
+            continue;
+          }
+          throw e; // outro erro, ou estourou tentativas
+        }
+      }
     }
 
     // 6) Tenta enviar email agora; se falhar, vai pra fila
