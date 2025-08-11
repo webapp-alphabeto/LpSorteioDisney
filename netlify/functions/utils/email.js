@@ -108,14 +108,6 @@ function gerarHTMLEmail(usuario, codigos) {
             </p>
           </td>
         </tr>
-
-        <!-- Banner opcional (da sua peça) -->
-        <tr>
-          <td style="padding:12px 0 0;">
-            <img src="https://storage.googleapis.com/crmalpha/images/emails%20fixos/basicos/BANNER%20-%20600%20x%20800.jpg"
-                 alt="Alphabeto" style="display:block; width:100%; height:auto; border:0;" />
-          </td>
-        </tr>
       </table>
 
       <!-- ===== FOOTER (seu mesmo rodapé compacto) ===== -->
