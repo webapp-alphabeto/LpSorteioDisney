@@ -1,0 +1,13 @@
+# deps e builds
+node_modules/
+dist/
+.build/
+.netlify/
+
+# variáveis de ambiente
+.env
+*.env
+.env.*
+
+# artefatos locais
+.DS_Store

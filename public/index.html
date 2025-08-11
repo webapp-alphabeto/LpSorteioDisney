@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Sorteio – Formulário</title>
+
+  <!-- Fonte Becca & Perry Script -->
+  <link href="https://db.onlinewebfonts.com/c/fa42cd61576241995f375edd774fd991?family=Becca+%26+Perry+script" rel="stylesheet">
+
+  <style>
+    /* ====== VIDEO RESPONSIVO ====== */
+    .video-wrap { width: 100vw; margin: 0 calc(50% - 50vw); padding: 0; background: var(--orange); }
+    .video { position: relative; width: 100%; line-height: 0; }
+    .video::before { content: ""; display: block; padding-top: 56.25%; } /* 16:9 */
+    .video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    :root {
+      --orange: #ff8300;      /* fundo principal */
+      --orange-dark: #e55a2b; /* faixa final */
+      --accent: #ffd54d;      /* destaque da pergunta */
+      --ink: #ffffff;         /* textos sobre laranja */
+      --field: #ffffff;       /* campos */
+      --muted: #ffe6cc;
+      --maxw: 980px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #fff; color: #111; }
+
+    /* Faixa no topo (Becca em bold) */
+    .topbar {
+      background: var(--orange);
+      color: var(--ink);
+      text-align: center;
+      padding: 30px 8px;
+      font-size: 50px;
+      font-weight: 700;              /* bold */
+      font-family: "Becca & Perry script", cursive; /* fonte Becca & Perry Script */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .topbar img { height: 50px; object-fit: contain; }
+
+    .promo-bar {
+      background: var(--orange);
+      color: white;
+      text-align: center;
+      padding: 20px 10px;
+      font-size: 22px;
+      font-weight: 400;
+    }
+    .promo-bar span {
+      color: #ffd54d;
+      font-weight: 700;
+    }
+    .promo-bar small {
+      display: block;
+      margin-top: 8px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    /* Imagem de topo */
+    .hero { width: 100vw; display: block; height: auto; }
+
+    /* Seção do formulário */
+    .form-section { width: 100%; background: var(--orange); color: var(--ink); }
+    .form-inner { max-width: var(--maxw); margin: 0 auto; padding: 28px 20px 40px; }
+
+    .kicker { font-weight: 700; letter-spacing: .2px; color: var(--muted); margin: 8px 0 14px; }
+    .question { font-weight: 900; line-height: 1.05; margin: 0 0 22px; font-size: clamp(26px, 6vw, 56px); }
+    .question .hl { color: var(--accent); }
+
+    form { background: transparent; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+
+    label {
+      display: block; font-size: 14px; font-weight: 700; color: var(--ink); opacity: .95; margin: 2px 0 6px;
+    }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="number"], input[type="file"] {
+      width: 100%; background: var(--field); border: 0; border-radius: 8px; padding: 14px 12px; font-size: 16px;
+    }
+    .terms { margin-top: 4px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .submit {
+      margin-top: 8px; width: 100%; border: 0; border-radius: 12px; padding: 16px; background: #fff;
+      color: #d24f00; font-weight: 900; font-size: 20px; box-shadow: 0 6px 0 #d64500; cursor: pointer;
+    }
+    .submit:hover { background: #fff3ea; }
+    .submit:active { transform: translateY(1px); box-shadow: 0 4px 0 #d64500; }
+    .reg { margin-top: 8px; text-align: center; font-size: 14px; color: #fff; }
+    .reg a { color: #fff; text-decoration: underline; }
+
+    /* Faixa final */
+    .goodluck {
+      width: 100%; background: var(--orange-dark); color: #fff; display: flex; align-items: center;
+      justify-content: center; flex-direction: column; padding: 26px 16px;
+    }
+    .goodluck h2 { margin: 0; font-size: clamp(28px, 7vw, 64px); letter-spacing: 2px; }
+    .goodluck a { margin-top: 8px; color: #fff; text-decoration: underline; font-weight: 700; }
+
+    /* Overlays */
+    .overlay { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0, 0, 0, .7); z-index: 50; padding: 16px; }
+    .dialog { width: 100%; max-width: 420px; background: #fff; border-radius: 16px; padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,.25); max-height: 80vh; overflow: auto; }
+    .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid #eee; border-top-color: var(--orange); animation: spin 1s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .codes { display: grid; gap: 8px; margin-top: 10px; }
+    .code { background: var(--orange); color: #fff; text-align: center; font-weight: 800; padding: 10px; border-radius: 10px; letter-spacing: 2px; }
+    .btn { display: block; width: 100%; margin-top: 14px; background: var(--orange); color: #fff; border: 0; border-radius: 12px; padding: 12px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- Faixa no topo -->
+  <div class="topbar">
+    <span>Mês das Crianças</span>
+    <img src="/logo.png" alt="Logo">
+  </div>
+
+
+  <!-- Imagem de topo -->
+  <img class="hero" src="/stitch.jpg" alt="Campanha">
+
+  <div class="promo-bar">
+    <p>
+      A cada R$ 290, em compras, <span>você ganha 1 cupom para</span> participar do sorteio.
+    </p>
+    <small>Certificado de Autorização SECAP Nº</small>
+  </div>
+
+  <div class="video-wrap">
+    <div class="video">
+      <iframe
+        src="https://www.youtube.com/embed/H4sr5HwyMmc?autoplay=1&mute=1&controls=0&rel=0&playsinline=1&modestbranding=1"
+        title="YouTube video player"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+
+  <!-- FORM FULL-WIDTH -->
+  <section class="form-section">
+    <div class="form-inner">
+      <div class="kicker">Preencha o formulário para participar</div>
+      <h1 class="question">Que marca <span class="hl">veste criança como criança ?</span></h1>
+
+      <form id="sorteioForm" enctype="multipart/form-data">
+        <div class="grid">
+          <div>
+            <label for="nome">Nome completo: *</label>
+            <input id="nome" name="nome" type="text" required />
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <label for="cpf">CPF: *</label>
+            <input id="cpf" name="cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" required />
+          </div>
+          <div>
+            <label for="dataNascimento">Data de nascimento: *</label>
+            <input id="dataNascimento" name="dataNascimento" type="date" required />
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <label for="email">E-mail: *</label>
+            <input id="email" name="email" type="email" required />
+          </div>
+          <div>
+            <label for="celular">Celular: *</label>
+            <input id="celular" name="celular" type="tel" placeholder="(00) 00000-0000" maxlength="15" required />
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label for="endereco">Endereço completo: *</label>
+            <input id="endereco" name="endereco" type="text" required />
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <label for="numeroNota">Número da nota: *</label>
+            <input id="numeroNota" name="numeroNota" type="text" required />
+          </div>
+          <div>
+            <label for="valorCompra">Valor da compra: *</label>
+            <input id="valorCompra" name="valorCompra" type="number" step="0.01" min="0.01" required />
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label for="notaFiscal">Anexar nota fiscal (PDF/JPG/PNG): *</label>
+            <input id="notaFiscal" name="notaFiscal" type="file" accept=".pdf,.jpg,.jpeg,.png" required />
+          </div>
+        </div>
+
+        <label class="terms">
+          <input id="termos" name="termos" type="checkbox" required />
+          Li e concordo com o regulamento
+        </label>
+
+        <button class="submit" type="submit">Enviar participação</button>
+        <p class="reg"> <a href="#">CLIQUE AQUI</a> para ver o regulamento.</p>
+      </form>
+    </div>
+
+    <div class="goodluck">
+      <h2>Boa sorte!!!</h2>
+      <a href="#">CLIQUE AQUI para ver o regulamento.</a>
+    </div>
+  </section>
+
+  <!-- Loading -->
+  <div id="loading" class="overlay" role="dialog" aria-modal="true">
+    <div class="dialog">
+      <div class="spinner"></div>
+      <div style="text-align:center;color:#555">Processando sua participação...</div>
+    </div>
+  </div>
+
+  <!-- Sucesso -->
+  <div id="success" class="overlay" role="dialog" aria-modal="true">
+    <div class="dialog">
+      <h3 style="margin:0 0 6px">✅ Participação confirmada!</h3>
+      <div id="emailStatus"></div>
+      <div id="codesDisplay" class="codes"></div>
+      <button class="btn" onclick="window.location.reload()">Nova participação</button>
+    </div>
+  </div>
+
+  <script>
+    // Máscara CPF
+    document.getElementById('cpf').addEventListener('input', function(e){
+      var v = e.target.value.replace(/\D/g, '').slice(0,11);
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      e.target.value = v;
+    });
+    // Máscara celular
+    document.getElementById('celular').addEventListener('input', function(e){
+      var v = e.target.value.replace(/\D/g, '').slice(0,11);
+      v = v.replace(/(\d{2})(\d)/, '($1) $2');
+      v = v.replace(/(\d{5})(\d)/, '$1-$2');
+      e.target.value = v;
+    });
+
+    function validarCPF(cpf){
+      cpf = cpf.replace(/[^\d]+/g, '');
+      if(cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+      var soma=0,resto;
+      for(var i=1;i<=9;i++) soma += parseInt(cpf.substring(i-1,i))*(11-i);
+      resto=(soma*10)%11; if(resto===10||resto===11) resto=0; if(resto!==parseInt(cpf.substring(9,10))) return false;
+      soma=0; for(var j=1;j<=10;j++) soma += parseInt(cpf.substring(j-1,j))*(12-j);
+      resto=(soma*10)%11; if(resto===10||resto===11) resto=0; return resto===parseInt(cpf.substring(10,11));
+    }
+
+    document.getElementById('sorteioForm').addEventListener('submit', async function(e){
+      e.preventDefault();
+      var cpf = document.getElementById('cpf').value;
+      if(!validarCPF(cpf)){ alert('CPF inválido'); return; }
+
+      var nasc = document.getElementById('dataNascimento').value;
+      var age = new Date().getFullYear() - new Date(nasc).getFullYear();
+      if(age < 18){ alert('Você deve ter pelo menos 18 anos.'); return; }
+
+      document.getElementById('loading').style.display = 'grid';
+      var fd = new FormData(e.currentTarget);
+      fd.set('cpf', cpf); fd.set('termos','true');
+
+      try{
+        var res = await fetch('/.netlify/functions/processar-sorteio',{method:'POST',body:fd});
+        var json = await res.json();
+        document.getElementById('loading').style.display = 'none';
+        if(json.success){
+          var es=document.getElementById('emailStatus');
+          es.innerHTML = json.data.email_status==='enviado' ? '📧 Email enviado com sucesso.' :
+                         json.data.email_status==='na_fila' ? '📨 Email na fila de envio.' :
+                         '⚠️ Não foi possível enviar o email. Guarde seus códigos.';
+          document.getElementById('codesDisplay').innerHTML = (json.data.codigos||[]).map(function(c){return '<div class="code">'+c+'</div>';}).join('');
+          document.getElementById('success').style.display='grid';
+        }else{
+          alert('Erro: '+(json.message||'Falha ao processar'));
+        }
+      }catch(err){
+        document.getElementById('loading').style.display='none';
+        alert('Erro de conexão. Tente novamente.');
+      }
+    });
+  </script>
+</body>
+</html>

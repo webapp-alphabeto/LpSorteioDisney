@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Gerenciar Fila de Emails</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5563d1;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: black;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-pendente {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-enviando {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .status-enviado {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-erro {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-box h3 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .stat-total {
+            background: #e3f2fd;
+        }
+
+        .stat-pendente {
+            background: #fff3cd;
+        }
+
+        .stat-enviado {
+            background: #d1e7dd;
+        }
+
+        .stat-erro {
+            background: #f8d7da;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .action-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .erro-msg {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/admin.html" class="back-link">← Voltar para o painel principal</a>
+        
+        <h1>📧 Gerenciar Fila de Emails</h1>
+        
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="processarFila()">▶️ Processar Fila Agora</button>
+            <button class="btn btn-success" onclick="reenviarComErro()">🔄 Reenviar Todos com Erro</button>
+            <button class="btn btn-warning" onclick="atualizarDados()">🔄 Atualizar Dados</button>
+            <button class="btn btn-danger" onclick="limparEnviados()">🗑️ Limpar Enviados</button>
+        </div>
+
+        <div id="estatisticas" class="stats-grid">
+            <!-- Estatísticas serão carregadas aqui -->
+        </div>
+
+        <div id="loading" class="loading">Carregando dados...</div>
+
+        <table style="display: none;" id="tabelaEmails">
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Email</th>
+                    <th>Nome</th>
+                    <th>Códigos</th>
+                    <th>Status</th>
+                    <th>Tentativas</th>
+                    <th>Erro</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaEmailsBody">
+                <!-- Emails serão carregados aqui -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://vvrbumbpqvxhzeoozabk.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2cmJ1bWJwcXZ4aHplb296YWJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMyMDE1MDAsImV4cCI6MjA2ODc3NzUwMH0.jIPxOwEtdjrgHwZ6z1qG8svewEC49ESahdcpfV8W3HA';
+
+        async function carregarEmails() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('tabelaEmails').style.display = 'none';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/fila_emails?order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Erro ao buscar emails');
+                
+                const emails = await response.json();
+                
+                // Calcular estatísticas
+                const stats = {
+                    total: emails.length,
+                    pendentes: emails.filter(e => e.status === 'pendente').length,
+                    enviados: emails.filter(e => e.status === 'enviado').length,
+                    erros: emails.filter(e => e.status === 'erro').length
+                };
+                
+                // Exibir estatísticas
+                document.getElementById('estatisticas').innerHTML = `
+                    <div class="stat-box stat-total">
+                        <h3>${stats.total}</h3>
+                        <p>Total</p>
+                    </div>
+                    <div class="stat-box stat-pendente">
+                        <h3>${stats.pendentes}</h3>
+                        <p>Pendentes</p>
+                    </div>
+                    <div class="stat-box stat-enviado">
+                        <h3>${stats.enviados}</h3>
+                        <p>Enviados</p>
+                    </div>
+                    <div class="stat-box stat-erro">
+                        <h3>${stats.erros}</h3>
+                        <p>Com Erro</p>
+                    </div>
+                `;
+                
+                // Exibir emails
+                const tbody = document.getElementById('tabelaEmailsBody');
+                tbody.innerHTML = emails.map(email => `
+                    <tr>
+                        <td>${new Date(email.created_at).toLocaleString('pt-BR')}</td>
+                        <td>${email.email}</td>
+                        <td>${email.nome}</td>
+                        <td>${email.codigos ? email.codigos.length : 0} código(s)</td>
+                        <td><span class="status-badge status-${email.status}">${email.status}</span></td>
+                        <td>${email.tentativas}/5</td>
+                        <td class="erro-msg" title="${email.erro_mensagem || ''}">
+                            ${email.erro_mensagem || '-'}
+                        </td>
+                        <td>
+                            ${email.status !== 'enviado' ? `
+                                <button class="btn btn-sm btn-primary" onclick="reenviarEmail('${email.id}')">
+                                    Reenviar
+                                </button>
+                            ` : '✓ Enviado'}
+                        </td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('tabelaEmails').style.display = 'table';
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar emails: ' + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function processarFila() {
+            if (!confirm('Processar a fila de emails agora?')) return;
+            
+            try {
+                const response = await fetch('/.netlify/functions/processar-fila-emails', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) throw new Error('Erro ao processar fila');
+                
+                const result = await response.json();
+                alert(`✅ Fila processada!\n\nProcessados: ${result.processados}\nEnviados: ${result.enviados}\nErros: ${result.erros}\n\nRestam ${result.fila_restante.pendentes} pendentes`);
+                carregarEmails();
+            } catch (error) {
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        async function reenviarEmail(id) {
+            if (!confirm('Reenviar este email?')) return;
+
+            try {
+                // Resetar status para pendente
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/fila_emails?id=eq.${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'pendente',
+                        tentativas: 0,
+                        erro_mensagem: null,
+                        agendado_para: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Erro ao atualizar email');
+                
+                alert('Email marcado para reenvio!');
+                carregarEmails();
+            } catch (error) {
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        async function reenviarComErro() {
+            if (!confirm('Reenviar todos os emails com erro?')) return;
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/fila_emails?status=eq.erro`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'pendente',
+                        tentativas: 0,
+                        erro_mensagem: null,
+                        agendado_para: new Date().toISOString()
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Erro ao atualizar emails');
+                
+                alert('Todos os emails com erro foram marcados para reenvio!');
+                carregarEmails();
+            } catch (error) {
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        async function limparEnviados() {
+            if (!confirm('Remover todos os emails já enviados da fila? Esta ação não pode ser desfeita.')) return;
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/fila_emails?status=eq.enviado`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Erro ao limpar emails');
+                
+                alert('Emails enviados foram removidos da fila!');
+                carregarEmails();
+            } catch (error) {
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        function atualizarDados() {
+            carregarEmails();
+        }
+
+        // Carregar ao iniciar
+        carregarEmails();
+        
+        // Atualizar a cada 30 segundos
+        setInterval(carregarEmails, 30000);
+    </script>
+</body>
+</html>
