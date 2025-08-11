@@ -9,3 +9,8 @@
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
+[[redirects]]
+  from = "/.netlify/functions/admin-participacoes"
+  to = "/.netlify/functions/listar-participacoes"
+  status = 200
