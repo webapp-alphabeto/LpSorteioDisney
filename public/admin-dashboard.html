@@ -4,45 +4,115 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Admin – Painel do Sorteio</title>
+
+<!-- SheetJS para exportar .xlsx -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <style>
-  :root{--bg:#f5f5f7;--card:#fff;--ink:#1f2937;--muted:#6b7280;--brand:#6366f1;--ok:#16a34a;--warn:#f59e0b;--err:#dc2626;}
+  :root{
+    --bg:#f5f7fb;--card:#fff;--ink:#0f172a;--muted:#64748b;
+    --brand:#6366f1;--brand-2:#22c55e;--ring:#dbeafe;
+    --ok:#16a34a;--warn:#f59e0b;--err:#dc2626;--chip:#eef2ff;
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-  .wrap{max-width:1200px;margin:24px auto;padding:0 16px}
-  h1{margin:0 0 16px}
-  .grid{display:grid;gap:16px}
-  @media(min-width:900px){.grid-2{grid-template-columns:1fr 1fr}}
-  .card{background:var(--card);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .card .hd{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0}
-  .card .bd{padding:16px}
-  .btn{appearance:none;border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:700}
+  body{margin:0;background:linear-gradient(180deg,#eef2ff, #f5f7fb);color:var(--ink);
+       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:1280px;margin:28px auto;padding:0 18px}
+
+  /* Header */
+  .top{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px
+  }
+  .title{
+    display:flex;align-items:center;gap:12px
+  }
+  .tag{
+    background:#e0e7ff;color:#3730a3;font-weight:800;border-radius:10px;padding:6px 10px;font-size:12px
+  }
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* Botões */
+  .btn{appearance:none;border:0;border-radius:10px;padding:12px 16px;cursor:pointer;font-weight:800;
+       transition:.15s transform ease, .15s filter ease}
+  .btn:hover{filter:brightness(0.97)}
+  .btn:active{transform:translateY(1px)}
   .btn.brand{background:var(--brand);color:#fff}
   .btn.subtle{background:#eef2ff;color:#4338ca}
-  .btn.ok{background:var(--ok);color:#fff}
+  .btn.ok{background:var(--brand-2);color:#fff}
   .btn.warn{background:var(--warn);color:#111}
-  .btn.err{background:var(--err);color:#fff}
+  .btn.ghost{background:#fff;color:#111;border:1px solid #e5e7eb}
+
+  /* Cards */
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px}
+  @media(min-width:900px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .card-kpi{background:var(--card);border-radius:16px;padding:16px;
+            box-shadow:0 10px 30px rgba(99,102,241,.12),0 2px 10px rgba(0,0,0,.06);
+            border:1px solid #eef2ff}
+  .kpi-label{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+  .kpi-value{font-size:28px;font-weight:900;margin-top:6px}
+
+  /* Grids */
+  .grid{display:grid;gap:16px}
+  @media(min-width:1000px){.grid-2{grid-template-columns:1fr 1fr}}
+
+  /* Card bloco */
+  .card{background:var(--card);border-radius:16px;box-shadow:0 8px 28px rgba(2,6,23,.05);
+        border:1px solid #e5e7eb}
+  .card .hd{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0}
+  .card .bd{padding:16px}
+
+  /* Filtros */
   .row{display:flex;gap:8px;flex-wrap:wrap}
-  .tbl{width:100%;border-collapse:collapse}
-  .tbl th,.tbl td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px}
-  .tbl th{background:#f8fafc;color:#334155}
-  .badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:12px}
+  .input{
+    display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;
+    padding:10px 12px
+  }
+  .input input,.input select{border:0;outline:none;background:transparent;font-size:14px;min-width:120px}
+  .muted{color:var(--muted)}
+
+  /* Tabela */
+  .tbl{width:100%;border-collapse:separate;border-spacing:0 6px}
+  .tbl thead th{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#475569;padding:10px 12px}
+  .tbl tbody tr{background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+  .tbl td{padding:12px;border-top:1px solid #eef2ff;border-bottom:1px solid #eef2ff;font-size:14px}
+  .tbl tbody tr:hover{outline:2px solid var(--ring);outline-offset:0}
+
+  .badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800}
   .b-pendente{background:#fff7ed;color:#9a3412}
   .b-enviando{background:#eff6ff;color:#1d4ed8}
   .b-enviado{background:#ecfdf5;color:#047857}
   .b-erro{background:#fef2f2;color:#b91c1c}
-  .muted{color:var(--muted)}
-  input,select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
+
   .codes{display:flex;gap:6px;flex-wrap:wrap}
-  .code{background:#eef2ff;color:#3730a3;padding:2px 8px;border-radius:6px;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;font-size:12px}
+  .code{background:var(--chip);color:#3730a3;padding:4px 10px;border-radius:999px;font-family:ui-monospace, Menlo, monospace;
+        font-weight:800;font-size:12px}
+
+  /* Barra de ferramentas da seção */
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .toolbar .spacer{flex:1}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🎫 Painel Administrativo do Sorteio</h1>
 
-  <div class="row" style="margin-bottom:16px">
-    <button class="btn brand" onclick="processarFila()">▶️ Processar fila de e-mails</button>
-    <button class="btn subtle" onclick="refreshAll()">🔄 Atualizar</button>
+  <!-- Cabeçalho -->
+  <div class="top">
+    <div class="title">
+      <h1 style="margin:0;font-size:26px">🎫 Painel Administrativo do Sorteio</h1>
+      <span class="tag">live</span>
+    </div>
+    <div class="actions">
+      <button class="btn brand" onclick="processarFila()">▶️ Processar fila</button>
+      <button class="btn ghost" onclick="refreshAll()">🔄 Atualizar</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="cards" id="kpis">
+    <div class="card-kpi"><div class="kpi-label">Participantes</div><div class="kpi-value" id="kpiParticipantes">—</div></div>
+    <div class="card-kpi"><div class="kpi-label">Códigos</div><div class="kpi-value" id="kpiCodigos">—</div></div>
+    <div class="card-kpi"><div class="kpi-label">Valor total</div><div class="kpi-value" id="kpiValor">—</div></div>
+    <div class="card-kpi"><div class="kpi-label">Ticket médio</div><div class="kpi-value" id="kpiTicket">—</div></div>
   </div>
 
   <div class="grid grid-2">
@@ -50,12 +120,15 @@
     <div class="card">
       <div class="hd">
         <h3 style="margin:0">Participações</h3>
-        <div class="row">
-          <input id="fNome" placeholder="Nome" />
-          <input id="fCPF" placeholder="CPF" />
-          <input id="fNota" placeholder="Nº nota" />
+        <div class="toolbar">
+          <div class="input"><span>🔎</span><input id="fNome" placeholder="Nome" /></div>
+          <div class="input"><span>🪪</span><input id="fCPF" placeholder="CPF" /></div>
+          <div class="input"><span>🧾</span><input id="fNota" placeholder="Nº nota" /></div>
           <button class="btn subtle" onclick="filtrarParticipacoes()">Filtrar</button>
-          <button class="btn subtle" onclick="limparFiltrosParticipacoes()">Limpar</button>
+          <button class="btn ghost" onclick="limparFiltrosParticipacoes()">Limpar</button>
+          <span class="spacer"></span>
+          <button class="btn warn" onclick="exportarParticipacoesCSV()">CSV</button>
+          <button class="btn ok" onclick="exportarParticipacoesXLSX()">Excel</button>
         </div>
       </div>
       <div class="bd">
@@ -72,9 +145,9 @@
                 <th>Nº Nota</th>
                 <th>Valor</th>
                 <th>Códigos</th>
-                <th>Resp. Pergunta</th>
+                <th>Resp.</th>
                 <th>Status</th>
-                <th>Nota</th>
+                <th>Comprovante</th>
               </tr>
             </thead>
             <tbody id="tbPart"></tbody>
@@ -87,15 +160,20 @@
     <div class="card">
       <div class="hd">
         <h3 style="margin:0">Fila de e-mails</h3>
-        <div class="row">
-          <select id="fStatus">
-            <option value="">Todos</option>
-            <option>pendente</option>
-            <option>enviando</option>
-            <option>enviado</option>
-            <option>erro</option>
-          </select>
-          <button class="btn subtle" onclick="carregarFila()">Filtrar</button>
+        <div class="toolbar">
+          <div class="input">
+            <select id="fStatus">
+              <option value="">Todos status</option>
+              <option>pendente</option>
+              <option>enviando</option>
+              <option>enviado</option>
+              <option>erro</option>
+            </select>
+          </div>
+          <button class="btn subtle" onclick="carregarFila()">Aplicar</button>
+          <span class="spacer"></span>
+          <button class="btn warn" onclick="exportarFilaCSV()">CSV</button>
+          <button class="btn ok" onclick="exportarFilaXLSX()">Excel</button>
         </div>
       </div>
       <div class="bd">
@@ -126,12 +204,13 @@
 <script>
 let participacoesAll = [];
 let participacoesFiltradas = [];
+let filaAtual = [];
 
+// ========= Fetch + Render =========
 async function refreshAll(){
   await Promise.all([carregarParticipacoes(),carregarFila()]);
 }
 
-// PARTICIPAÇÕES
 async function carregarParticipacoes(){
   const res = await fetch('/.netlify/functions/listar-participacoes');
   if(!res.ok){ alert('Erro ao carregar participações'); return; }
@@ -140,6 +219,19 @@ async function carregarParticipacoes(){
   participacoesAll = dados;
   participacoesFiltradas = dados;
   renderParticipacoes();
+  renderKPIs(dados);
+}
+
+function renderKPIs(dados){
+  const participantes = new Set(dados.map(p=> (p.usuarios||p.usuario||{}).cpf )).size;
+  const totalValor = dados.reduce((s,p)=> s + Number(p.valor_compra||0), 0);
+  const totalCodigos = dados.reduce((s,p)=> s + (p.codigos_sorteio?.length || p.codigos?.length || 0), 0);
+  const ticket = participantes ? totalValor/participantes : 0;
+
+  document.getElementById('kpiParticipantes').textContent = participantes || 0;
+  document.getElementById('kpiCodigos').textContent = totalCodigos || 0;
+  document.getElementById('kpiValor').textContent = 'R$ ' + (totalValor||0).toFixed(2);
+  document.getElementById('kpiTicket').textContent = 'R$ ' + ticket.toFixed(2);
 }
 
 function filtrarParticipacoes(){
@@ -175,6 +267,9 @@ function renderParticipacoes(){
     total += valor;
     const lista = p.codigos_sorteio || p.codigos || [];
     cods += lista.length;
+    const badgeStatus = (p.status==='aprovado') ? 'b-enviado'
+                       : (p.status==='rejeitado') ? 'b-erro'
+                       : 'b-pendente';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${data}</td>
@@ -186,7 +281,7 @@ function renderParticipacoes(){
       <td>R$ ${valor.toFixed(2)}</td>
       <td>${lista.map(c=>`<span class="code">${c.codigo||c}</span>`).join(' ')||'-'}</td>
       <td>${p.resposta_pergunta||'-'}</td>
-      <td>${p.status||'pendente'}</td>
+      <td><span class="badge ${badgeStatus}">${p.status||'pendente'}</span></td>
       <td>${p.arquivo_nota? `<a href="${p.arquivo_nota}" target="_blank" rel="noopener">Abrir</a>` : '-'}</td>
     `;
     tb.appendChild(tr);
@@ -195,7 +290,6 @@ function renderParticipacoes(){
     `Registros: ${participacoesFiltradas.length} • Códigos: ${cods} • Valor total: R$ ${total.toFixed(2)}`;
 }
 
-// FILA
 async function carregarFila(){
   const st = document.getElementById('fStatus').value;
   const url = new URL('/.netlify/functions/listar-fila-emails', location.origin);
@@ -203,8 +297,8 @@ async function carregarFila(){
   const res = await fetch(url, { headers: { 'Accept':'application/json' }});
   if(!res.ok){ alert('Erro ao carregar fila'); return; }
   const json = await res.json();
-  const itens = json.items || [];
-  renderFila(itens);
+  filaAtual = json.items || [];
+  renderFila(filaAtual);
 }
 
 function renderFila(itens){
@@ -232,11 +326,11 @@ function renderFila(itens){
       <td><span class="badge ${badge}">${i.status}</span></td>
       <td>${i.tentativas ?? 0}</td>
       <td class="codes">${(codes||[]).map(c=>`<span class="code">${c}</span>`).join(' ')}</td>
-      <td class="muted" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${i.erro_mensagem||''}">${i.erro_mensagem||''}</td>
+      <td class="muted" style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${i.erro_mensagem||''}">${i.erro_mensagem||''}</td>
       <td>
         ${i.status!=='enviado'
           ? `<button class="btn ok" onclick="reenviar(${i.id})">Reenviar</button>`
-          : `<button class="btn subtle" disabled>OK</button>`}
+          : `<button class="btn ghost" disabled>OK</button>`}
       </td>
     `;
     tb.appendChild(tr);
@@ -247,6 +341,7 @@ function renderFila(itens){
 
 function safeParseJSON(x){ try{ return typeof x==='string' ? JSON.parse(x) : x }catch(e){ return [] } }
 
+// ========= Ações =========
 async function processarFila(){
   if(!confirm('Processar fila agora?')) return;
   const res = await fetch('/.netlify/functions/processar-fila-emails',{method:'POST'});
@@ -269,6 +364,89 @@ async function reenviar(id){
     alert('E-mail reenviado!');
   }
   await carregarFila();
+}
+
+// ========= Exportação =========
+function baixaArquivo(nome, blob){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+}
+
+function toCSV(rows){
+  if(!rows.length) return '';
+  const cols = Object.keys(rows[0]);
+  const esc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const header = cols.map(esc).join(',');
+  const body = rows.map(r=> cols.map(c=> esc(r[c])).join(',')).join('\n');
+  return header+'\n'+body;
+}
+
+/* Participações -> dataset plano */
+function datasetParticipacoes(arr){
+  return arr.map(p=>{
+    const u = p.usuarios || p.usuario || {};
+    const cods = (p.codigos_sorteio||p.codigos||[]).map(c=>c.codigo||c).join(' ');
+    return {
+      data: new Date(p.created_at || p.data_criacao || Date.now()).toLocaleString('pt-BR'),
+      nome: u.nome||'',
+      cpf: u.cpf||'',
+      email: u.email||'',
+      celular: u.celular||'',
+      numero_nota: p.numero_nota||'',
+      valor_compra: Number(p.valor_compra||0).toFixed(2),
+      codigos: cods,
+      resposta: p.resposta_pergunta||'',
+      status: p.status||'pendente',
+      comprovante: p.arquivo_nota||''
+    };
+  });
+}
+
+/* Fila -> dataset plano */
+function datasetFila(arr){
+  return arr.map(i=>({
+    id: i.id,
+    criado_em: new Date(i.created_at || i.agendado_para || Date.now()).toLocaleString('pt-BR'),
+    nome: i.nome||'',
+    email: i.email||'',
+    status: i.status||'',
+    tentativas: i.tentativas ?? 0,
+    codigos: (safeParseJSON(i.codigos)||[]).join(' '),
+    erro: i.erro_mensagem||''
+  }));
+}
+
+/* CSV */
+function exportarParticipacoesCSV(){
+  const rows = datasetParticipacoes(participacoesFiltradas);
+  const csv = toCSV(rows);
+  baixaArquivo(`participacoes_${new Date().toISOString().slice(0,10)}.csv`, new Blob([csv],{type:'text/csv;charset=utf-8'}));
+}
+function exportarFilaCSV(){
+  const rows = datasetFila(filaAtual);
+  const csv = toCSV(rows);
+  baixaArquivo(`fila_emails_${new Date().toISOString().slice(0,10)}.csv`, new Blob([csv],{type:'text/csv;charset=utf-8'}));
+}
+
+/* XLSX (SheetJS) */
+function exportarParticipacoesXLSX(){
+  const data = datasetParticipacoes(participacoesFiltradas);
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Participacoes');
+  XLSX.writeFile(wb, `participacoes_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+function exportarFilaXLSX(){
+  const data = datasetFila(filaAtual);
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'FilaEmails');
+  XLSX.writeFile(wb, `fila_emails_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 refreshAll();
