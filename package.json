@@ -10,8 +10,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@azure/storage-blob": "^12.27.0",
     "@supabase/supabase-js": "^2.52.0",
     "busboy": "^1.6.0",
-    "resend": "^4.7.0"
+    "mssql": "^11.0.1",
+    "resend": "^4.8.0"
   }
 }
