@@ -8,20 +8,27 @@ const { query } = require('./utils/db-mssql');
  */
 async function fetchParticipacoesComCodigos() {
   const sqlModern = `
-    SELECT
-      p.*,
-      u.nome, u.cpf, u.email, u.celular,
-      -- status default "pendente" se vier NULL
-      ISNULL(p.status, 'pendente') AS status,
-      -- agrega códigos ordenados por created_at
-      STRING_AGG(cs.codigo, ',') WITHIN GROUP (ORDER BY cs.created_at) AS codigos_str
-    FROM participacoes p
-    JOIN usuarios u ON u.id = p.usuario_id
-    LEFT JOIN codigos_sorteio cs ON cs.participacao_id = p.id
-    GROUP BY
-      p.id, p.usuario_id, p.numero_nota, p.valor_compra, p.arquivo_nota, p.created_at, p.status,
-      u.nome, u.cpf, u.email, u.celular
-    ORDER BY p.created_at DESC
+      SELECT
+        p.id,
+        p.usuario_id,
+        p.numero_nota,
+        p.valor_compra,
+        p.arquivo_nota,
+        p.created_at,
+        -- se quiser ainda um status default só para exibir:
+        'pendente' AS status,
+        u.nome,
+        u.cpf,
+        u.email,
+        u.celular,
+        STRING_AGG(cs.codigo, ',') WITHIN GROUP (ORDER BY cs.created_at) AS codigos_str
+      FROM participacoes p
+      JOIN usuarios u ON u.id = p.usuario_id
+      LEFT JOIN codigos_sorteio cs ON cs.participacao_id = p.id
+      GROUP BY
+        p.id, p.usuario_id, p.numero_nota, p.valor_compra, p.arquivo_nota, p.created_at,
+        u.nome, u.cpf, u.email, u.celular
+      ORDER BY p.created_at DESC;
   `;
 
   try {
